@@ -1,134 +1,59 @@
+/* eslint-disable no-void */
 import camelcase from 'lodash.camelcase'
 import sankecase from 'lodash.snakecase'
-import {myTypeOf} from './utils'
+import { myTypeOf } from './utils'
 
-
-export function s2cConvert(data, rules = null, level = 0) {
+function traverse (data, rules, fn, level) {
   if (myTypeOf(data) !== '[object Object]') return data
-  let hasRules = false
-  if (rules && rules.length) {
-    hasRules = true
-  }
-  let res = {}
-  for(let [key, value] of Object.entries(data)) {
+  const hasRules = !!(rules && rules.length)
+  const res = {}
+  for (const [key, value] of Object.entries(data)) {
+    const keyCoverted = fn(key)
     if (!hasRules) {
-      if (myTypeOf(value) !== '[object Object]') {
-        const keyCoverted = camelcase(key)
-        res[keyCoverted] = value
-      } else {
-        const keyCoverted = camelcase(key)
-        res[keyCoverted] = s2cConvert(value, rules, level + 1)
-      }
+      res[keyCoverted] = (myTypeOf(value) === '[object Object]') ? traverse(value, rules, fn, level + 1) : value
     } else {
       if (myTypeOf(value) !== '[object Object]') {
         let flag = false
         rules.forEach((item) => {
-          if (item.hasOwnProperty('level')) {
-            if (level === item.level) {
-              if (key === item.source) {
-                res[item.target] = value
-                flag = true
-              }
+          if (Object.prototype.hasOwnProperty.call(item, 'level')) {
+            if (level === item.level && key === item.source) {
+              res[item.target] = value
+              flag = true
             }
           } else {
             if (key === item.source) {
-                res[item.target] = value
-                flag = true
-              }
+              res[item.target] = value
+              flag = true
+            }
           }
         })
-        if (!flag) {
-          const keyCoverted = camelcase(key)
-          res[keyCoverted] = value
-        }
+        flag ? void (0) : res[keyCoverted] = value
       } else {
         let flag = false
         rules.forEach((item) => {
-          if (item.hasOwnProperty('level')) {
-            if (level === item.level) {
-              if (key === item.source) {
-                res[item.target] = s2cConvert(value, rules, level + 1)
-                flag = true
-              }
+          if (Object.prototype.hasOwnProperty.call(item, 'level')) {
+            if (level === item.level && key === item.source) {
+              res[item.target] = traverse(value, rules, fn, level + 1)
+              flag = true
             }
           } else {
             if (key === item.source) {
-                res[item.target] = s2cConvert(value, rules, level + 1)
-                flag = true
-              }
+              res[item.target] = traverse(value, rules, fn, level + 1)
+              flag = true
+            }
           }
         })
-        if (!flag) {
-          const keyCoverted = camelcase(key)
-          res[keyCoverted] = s2cConvert(value, rules, level + 1)
-        }
+        flag ? void (0) : res[keyCoverted] = traverse(value, rules, fn, level + 1)
       }
     }
   }
   return res
 }
 
-export function c2sConvert(data, rules = null, level = 0) {
-  if (myTypeOf(data) !== '[object Object]') return data
-  let hasRules = false
-  if (rules && rules.length) {
-    hasRules = true
-  }
-  let res = {}
-  for(let [key, value] of Object.entries(data)) {
-    if (!hasRules) {
-      if (myTypeOf(value) !== '[object Object]') {
-        const keyCoverted = sankecase(key)
-        res[keyCoverted] = value
-      } else {
-        const keyCoverted = sankecase(key)
-        res[keyCoverted] = c2sConvert(value, rules, level + 1)
-      }
-    } else {
-      if (myTypeOf(value) !== '[object Object]') {
-        let flag = false
-        rules.forEach((item) => {
-          if (item.hasOwnProperty('level')) {
-            if (level === item.level) {
-              if (key === item.source) {
-                res[item.target] = value
-                flag = true
-              }
-            }
-          } else {
-            if (key === item.source) {
-                res[item.target] = value
-                flag = true
-              }
-          }
-        })
-        if (!flag) {
-          const keyCoverted = sankecase(key)
-          res[keyCoverted] = value
-        }
-      } else {
-        let flag = false
-        rules.forEach((item) => {
-          if (item.hasOwnProperty('level')) {
-            if (level === item.level) {
-              if (key === item.source) {
-                res[item.target] = c2sConvert(value, rules, level + 1)
-                flag = true
-              }
-            }
-          } else {
-            if (key === item.source) {
-                res[item.target] = c2sConvert(value, rules, level + 1)
-                flag = true
-              }
-          }
-        })
-        if (!flag) {
-          const keyCoverted = sankecase(key)
-          res[keyCoverted] = c2sConvert(value, rules, level + 1)
-        }
-      }
-    }
-  }
-  return res
+export function s2cConvert (data, rules = null) {
+  return traverse(data, rules, camelcase, 0)
+}
+
+export function c2sConvert (data, rules = null) {
+  return traverse(data, rules, sankecase, 0)
 }
